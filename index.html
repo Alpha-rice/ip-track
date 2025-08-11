@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>IP変更間隔モニター（ローカル保存・多ソース）</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <h1>IP変更間隔モニター</h1>
+
+  <section class="controls">
+    <div class="row">
+      <label for="intervalSec">取得間隔(秒)</label>
+      <input id="intervalSec" type="number" min="5" step="5" value="60" />
+      <button id="apply">適用</button>
+      <span class="muted">WebRTC/STUN と HTTP API を併用可能。</span>
+    </div>
+    <div class="row">
+      <label for="sourcePref">優先取得ソース</label>
+      <select id="sourcePref">
+        <option value="auto">自動（両方取得・一致優先）</option>
+        <option value="webrtc">WebRTC（srflx）</option>
+        <option value="http">HTTP API（ipify）</option>
+      </select>
+      <button id="start">開始</button>
+      <button id="stop" disabled>停止</button>
+      <span id="status" class="muted"></span>
+    </div>
+  </section>
+
+  <section>
+    <h2>現在の推定パブリックIP</h2>
+    <div id="currentIP">-</div>
+    <div class="muted" id="mismatchNotice"></div>
+  </section>
+
+  <section>
+    <h2>変更間隔</h2>
+    <div id="stats">
+      <div>平均変更間隔: <span id="avgInterval">-</span></div>
+      <div>変更回数: <span id="changeCount">0</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>取得履歴</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>取得時刻</th>
+          <th>IP</th>
+          <th>ソース</th>
+          <th>直前からの経過(分)</th>
+          <th>変更</th>
+          <th>不一致</th>
+        </tr>
+      </thead>
+      <tbody id="historyBody"></tbody>
+      <tfoot>
+        <tr>
+          <td colspan="7">
+            <button id="clear">履歴を消去</button>
+            <span class="muted">IndexedDBに保存しています。</span>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </section>
+
+  <script src="webrtc_ip.js"></script>
+  <script src="db.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
