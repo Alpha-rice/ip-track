@@ -2,99 +2,96 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>IP変更間隔モニター（ローカル保存・多ソース）</title>
+  <title>IP変更間隔モニター</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="format-detection" content="telephone=no, email=no, address=no" />
   <meta name="color-scheme" content="light dark">
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="app-header">
-    <h1>IP変更間隔モニター</h1>
+  <header class="bar">
+    <div class="bar-left">
+      <span class="logo" aria-label="IP Monitor">IP</span>
+      <span class="title">IP Monitor</span>
+    </div>
+    <div class="bar-right">
+      <button id="start" class="icon-btn" title="開始">▶</button>
+      <button id="stop" class="icon-btn" title="停止" disabled>■</button>
+      <button id="apply" class="icon-btn" title="設定を適用">✓</button>
+    </div>
   </header>
 
-  <main class="container">
-    <section class="card controls">
-      <div class="field-grid">
-        <div class="field">
-          <label for="intervalSec">取得間隔(秒)</label>
+  <main class="container compact">
+    <!-- コンパクトなステータス行 -->
+    <section class="strip">
+      <div class="ip-line" aria-live="polite">
+        <span class="label">IP</span>
+        <span id="currentIP" class="value">-</span>
+      </div>
+      <div class="stats-line">
+        <span class="pill"><span class="k">Avg</span><span id="avgInterval" class="v">-</span></span>
+        <span class="pill"><span class="k">Chg</span><span id="changeCount" class="v">0</span></span>
+        <span id="status" class="status-dot" title="状態"></span>
+      </div>
+    </section>
+
+    <!-- 折りたたみ設定 -->
+    <details class="fold" id="settingsFold">
+      <summary>設定</summary>
+      <div class="grid">
+        <label class="field">
+          <span>取得間隔(秒)</span>
           <input id="intervalSec" type="number" min="5" step="5" inputmode="numeric" />
-        </div>
-        <div class="field">
-          <label for="sourcePref">優先取得ソース</label>
+        </label>
+        <label class="field">
+          <span>優先ソース</span>
           <select id="sourcePref">
-            <option value="auto">自動（両方取得・一致優先）</option>
-            <option value="webrtc">WebRTC（srflx）</option>
-            <option value="http">HTTP API（ipify）</option>
+            <option value="auto">自動</option>
+            <option value="webrtc">WebRTC</option>
+            <option value="http">HTTP</option>
           </select>
-        </div>
+        </label>
       </div>
-      <div class="actions">
-        <button id="apply" class="btn secondary">適用</button>
-        <button id="start" class="btn primary">開始</button>
-        <button id="stop" class="btn" disabled>停止</button>
-        <span id="status" class="status muted"></span>
-      </div>
-      <p class="help muted">WebRTC/STUN と HTTP API を併用可能。</p>
-    </section>
+      <p id="mismatchNotice" class="note"></p>
+    </details>
 
-    <section class="card">
-      <h2>現在の推定パブリックIP</h2>
-      <div id="currentIP" class="current-ip">-</div>
-      <div id="mismatchNotice" class="muted small"></div>
-    </section>
-
-    <section class="card">
-      <h2>変更間隔</h2>
-      <div class="stats">
-        <div class="stat">
-          <div class="stat-label">平均変更間隔</div>
-          <div class="stat-value" id="avgInterval">-</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">変更回数</div>
-          <div class="stat-value" id="changeCount">0</div>
-        </div>
-      </div>
-    </section>
-
-    <section class="card">
-      <h2>取得履歴</h2>
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>取得時刻</th>
-              <th>IP</th>
-              <th>ソース</th>
-              <th>直前から(分)</th>
-              <th>変更</th>
-              <th>不一致</th>
-            </tr>
-          </thead>
-          <tbody id="historyBody"></tbody>
-          <tfoot>
-            <tr>
-              <td colspan="7">
-                <div class="table-actions">
-                  <button id="clear" class="btn danger">履歴を消去</button>
-                  <span class="muted small">IndexedDBに保存しています。</span>
-                </div>
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+    <!-- 履歴（最小列＋詳細行） -->
+    <section class="table-wrap">
+      <table class="mini">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>時刻</th>
+            <th>IP</th>
+            <th class="opt">変</th>
+            <th class="opt">源</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+        <tfoot>
+          <tr>
+            <td colspan="5">
+              <div class="row-end">
+                <button id="clear" class="text-btn danger">履歴を消去</button>
+              </div>
+            </td>
+          </tr>
+        </tfoot>
+      </table>
     </section>
   </main>
 
-  <footer class="app-footer muted small">
-    <span>モバイルフレンドリーUI</span>
-  </footer>
+  <!-- 右下のフローティングボタン（再取得） -->
+  <button id="fabRefresh" class="fab" title="今すぐ取得">⟳</button>
 
-  <script src="webrtc_ip.js" type="module"></script>
-  <script src="db.js" type="module"></script>
-  <script src="app.js" type="module"></script>
+  <script type="module" src="webrtc_ip.js"></script>
+  <script type="module" src="db.js"></script>
+  <script type="module" src="app.js"></script>
+  <script>
+    // 既存のapp.jsはタイマー駆動ですが、手動取得のために start/stop を使わず
+    // FABで1回サンプリングさせたい場合は、app.jsのsampleOnceを露出する必要があります。
+    // 露出していない場合は、start→stopで擬似的に1回だけ動かすなどで代用ください。
+    // このスニペットではUIのみ提供します。
+  </script>
 </body>
 </html>
