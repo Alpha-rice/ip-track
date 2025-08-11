@@ -1,14 +1,255 @@
-body { font-family: system-ui, sans-serif; margin: 24px; }
-h1, h2 { margin: 12px 0; }
-.controls .row { margin-bottom: 8px; }
-label { display: inline-block; width: 10em; }
-input, select { padding: 4px 6px; }
-button { padding: 6px 10px; margin-left: 6px; }
-.muted { color: #666; margin-left: 8px; }
-table { border-collapse: collapse; margin-top: 12px; width: 100%; max-width: 1000px; }
-th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
-tfoot td { font-weight: bold; }
-.badge { padding: 2px 6px; border-radius: 10px; font-size: 12px; }
-.badge-warn { background: #fff3cd; color: #7a5a00; border: 1px solid #ffe69c; }
-.badge-ok { background: #e2f5e9; color: #216e3a; border: 1px solid #bfe6cd; }
-.badge-err { background: #fde2e1; color: #7c1d18; border: 1px solid #f5b5b2; }
+:root {
+  --bg: #ffffff;
+  --fg: #111827;
+  --muted: #6b7280;
+  --card: #ffffff;
+  --border: #e5e7eb;
+  --primary: #2563eb;
+  --primary-fg: #ffffff;
+  --secondary: #f3f4f6;
+  --danger: #ef4444;
+  --ok-bg: #e2f5e9;
+  --ok-fg: #216e3a;
+  --ok-bd: #bfe6cd;
+  --warn-bg: #fff3cd;
+  --warn-fg: #7a5a00;
+  --warn-bd: #ffe69c;
+
+  --radius: 12px;
+  --shadow: 0 1px 2px rgba(0,0,0,0.04), 0 6px 16px rgba(0,0,0,0.06);
+  --space: 16px;
+  --space-sm: 8px;
+  --space-lg: 24px;
+  --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Noto Sans JP, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b0f14;
+    --fg: #e5e7eb;
+    --muted: #9aa3ae;
+    --card: #0f141a;
+    --border: #1f2937;
+    --secondary: #111827;
+    --primary: #3b82f6;
+    --danger: #f87171;
+    --ok-bg: #153f2a;
+    --ok-fg: #a7f3d0;
+    --ok-bd: #1f6a45;
+    --warn-bg: #3a2f00;
+    --warn-fg: #facc15;
+    --warn-bd: #6b5c00;
+  }
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-header, .app-footer {
+  padding: var(--space);
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.container {
+  padding: 0 var(--space);
+  max-width: 1100px;
+  margin: 0 auto var(--space-lg);
+}
+
+h1, h2 {
+  margin: var(--space) 0;
+  line-height: 1.2;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space);
+  box-shadow: var(--shadow);
+  margin-bottom: var(--space-lg);
+}
+
+.controls .field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space);
+}
+
+@media (max-width: 720px) {
+  .controls .field-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.field label {
+  display: block;
+  font-size: 0.95rem;
+  margin-bottom: 6px;
+  color: var(--muted);
+}
+
+input, select {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--fg);
+  font-size: 16px; /* iOSズーム抑止 */
+  outline: none;
+}
+
+input:focus, select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 25%, transparent);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: center;
+  margin-top: var(--space);
+}
+
+.btn {
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--secondary);
+  color: var(--fg);
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn.primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-fg);
+}
+
+.btn.secondary {
+  background: var(--secondary);
+}
+
+.btn.danger {
+  background: transparent;
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.status {
+  min-height: 1.5em;
+}
+
+.help, .muted {
+  color: var(--muted);
+}
+.small { font-size: 0.9rem; }
+
+.current-ip {
+  font-size: clamp(1.2rem, 3.5vw, 1.6rem);
+  font-weight: 700;
+  padding: 10px 0;
+  word-break: break-all;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: var(--space);
+}
+
+@media (max-width: 520px) {
+  .stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+.stat {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: var(--space);
+}
+
+.stat-label {
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.stat-value {
+  font-size: clamp(1.1rem, 4vw, 1.5rem);
+  font-weight: 700;
+}
+
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 720px; /* モバイルで横スクロール */
+  background: transparent;
+}
+
+th, td {
+  border-bottom: 1px solid var(--border);
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+tfoot td {
+  font-weight: 600;
+}
+
+.table-actions {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+  padding: 6px 0;
+}
+
+.badge {
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 12px;
+  display: inline-block;
+  line-height: 1.4;
+}
+
+.badge-warn { background: var(--warn-bg); color: var(--warn-fg); border: 1px solid var(--warn-bd); }
+.badge-ok   { background: var(--ok-bg);   color: var(--ok-fg);   border: 1px solid var(--ok-bd); }
+
+/* 安全なタップ領域確保（iOSセーフエリア） */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+}
