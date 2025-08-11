@@ -1,5 +1,5 @@
 const DB_NAME = "ip-monitor-db";
-const DB_VERSION = 2; // バージョンアップ（ソース等の追加）
+const DB_VERSION = 2;
 
 let dbPromise;
 
@@ -7,6 +7,7 @@ export function openDB() {
   if (dbPromise) return dbPromise;
   dbPromise = new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
+
     req.onupgradeneeded = (e) => {
       const db = e.target.result;
       if (!db.objectStoreNames.contains("measurements")) {
@@ -14,8 +15,6 @@ export function openDB() {
         os.createIndex("by_ts", "ts", { unique: false });
       } else {
         const store = req.transaction.objectStore("measurements");
-        // 追加フィールドがなくてもそのまま保存可（スキーマ緩い）が、
-        // 既存データにも index が必要ならここで createIndex を行う。
         if (!store.indexNames.contains("by_ts")) {
           store.createIndex("by_ts", "ts", { unique: false });
         }
@@ -24,14 +23,26 @@ export function openDB() {
         db.createObjectStore("settings", { keyPath: "key" });
       }
     };
-    req.onsuccess = () => resolve(req.result);
+
+    req.onsuccess = () => {
+      const db = req.result;
+      db.onversionchange = () => {
+        try { db.close(); } catch {}
+        alert("データベースが更新されました。ページを再読み込みしてください。");
+      };
+      resolve(db);
+    };
+
+    req.onblocked = () => {
+      alert("データベースを更新できません。別タブを閉じてから再読み込みしてください。");
+    };
+
     req.onerror = () => reject(req.error);
   });
   return dbPromise;
 }
 
 export async function addMeasurement(record) {
-  // record: { ts, ip, source, httpIP?, webrtcIP?, mismatch? }
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction("measurements", "readwrite");
