@@ -1,12 +1,15 @@
 import { getPublicIPviaWebRTC } from './webrtc_ip.js';
 import { openDB, addMeasurement, getAllMeasurements, clearMeasurements, saveSetting, loadSetting } from './db.js';
 
-// HTTP API経由（ipify）の取得[11]
 async function getPublicIPviaHTTP(signal) {
-  const res = await fetch('https://api.ipify.org?format=json', { signal, cache: 'no-store' });
-  if (!res.ok) throw new Error(`ipify http ${res.status}`);
-  const data = await res.json();
-  return normalizeIP(data.ip);
+  try {
+    const res = await fetch('https://api.ipify.org?format=json', { signal, cache: 'no-store' });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return normalizeIP(data.ip);
+  } catch {
+    return null;
+  }
 }
 
 function normalizeIP(ip) {
@@ -72,18 +75,15 @@ async function refreshView() {
   const list = await getAllMeasurements();
   list.sort((a,b)=>a.ts - b.ts);
 
-  // 現在IP
   const last = list.length ? list[list.length - 1] : null;
   el.currentIP.textContent = last && last.ip != null ? last.ip : "-";
 
-  // 不一致表示
   if (last && last.webrtcIP && last.httpIP && last.webrtcIP !== last.httpIP) {
     el.mismatchNotice.innerHTML = `注意: WebRTC(${last.webrtcIP}) と HTTP API(${last.httpIP}) の結果が不一致です。VPN/ブラウザ設定の影響の可能性があります。`;
   } else {
     el.mismatchNotice.textContent = "";
   }
 
-  // テーブル描画
   el.historyBody.innerHTML = "";
   for (let i = 0; i < list.length; i++) {
     const prev = i ? list[i - 1] : null;
@@ -103,7 +103,6 @@ async function refreshView() {
     el.historyBody.appendChild(tr);
   }
 
-  // 変更間隔と平均
   const intervals = computeChangeIntervalsMs(list);
   el.changeCount.textContent = intervals.length;
   el.avgInterval.textContent = intervals.length ? fmtDuration(averageMs(intervals)) : "-";
@@ -112,51 +111,38 @@ async function refreshView() {
 async function sampleOnce() {
   el.status.textContent = "取得中...";
   const ts = Date.now();
+  const sourcePref = el.sourcePref.value;
 
-  // 設定
-  const sourcePref = el.sourcePref.value; // auto | webrtc | http
-
-  // 並列取得（auto時）
   let webrtcRes = null;
   let httpIP = null;
-
-  const abortCtrl = new AbortController();
 
   try {
     if (sourcePref === "webrtc") {
       webrtcRes = await getPublicIPviaWebRTC();
     } else if (sourcePref === "http") {
-      httpIP = await getPublicIPviaHTTP(abortCtrl.signal);
+      httpIP = await getPublicIPviaHTTP();
     } else {
-      // auto: 並列実行
       const [wr, hi] = await Promise.allSettled([
         getPublicIPviaWebRTC(),
-        getPublicIPviaHTTP(abortCtrl.signal)
+        getPublicIPviaHTTP()
       ]);
       webrtcRes = wr.status === "fulfilled" ? wr.value : null;
       httpIP = hi.status === "fulfilled" ? hi.value : null;
     }
 
     const webrtcIP = webrtcRes && webrtcRes.ip ? webrtcRes.ip : null;
-    const ipCandidates = [];
-
-    if (sourcePref === "webrtc") {
-      if (webrtcIP) ipCandidates.push({ ip: webrtcIP, source: "webrtc" });
-    } else if (sourcePref === "http") {
-      if (httpIP) ipCandidates.push({ ip: httpIP, source: "http" });
-    } else {
-      // auto: 一致を優先
-      if (webrtcIP && httpIP && webrtcIP === httpIP) {
-        ipCandidates.push({ ip: webrtcIP, source: "both" });
-      } else if (httpIP) {
-        ipCandidates.push({ ip: httpIP, source: "http" });
-      } else if (webrtcIP) {
-        ipCandidates.push({ ip: webrtcIP, source: "webrtc" });
-      }
-    }
-
-    const chosen = ipCandidates[0] || { ip: null, source: "none" };
     const mismatch = !!(webrtcIP && httpIP && webrtcIP !== httpIP);
+
+    let chosen = { ip: null, source: "none" };
+    if (sourcePref === "webrtc") {
+      if (webrtcIP) chosen = { ip: webrtcIP, source: "webrtc" };
+    } else if (sourcePref === "http") {
+      if (httpIP) chosen = { ip: httpIP, source: "http" };
+    } else {
+      if (webrtcIP && httpIP && webrtcIP === httpIP) chosen = { ip: webrtcIP, source: "both" };
+      else if (httpIP) chosen = { ip: httpIP, source: "http" };
+      else if (webrtcIP) chosen = { ip: webrtcIP, source: "webrtc" };
+    }
 
     await addMeasurement({
       ts,
@@ -167,9 +153,16 @@ async function sampleOnce() {
       mismatch
     });
 
-    el.status.textContent = "OK";
+    if (chosen.ip) {
+      el.status.textContent = `OK (${chosen.source})`;
+    } else {
+      const parts = [];
+      if (!webrtcIP) parts.push("WebRTC失敗");
+      if (!httpIP) parts.push("HTTP失敗");
+      el.status.textContent = parts.length ? parts.join(" / ") : "取得失敗";
+    }
   } catch (e) {
-    el.status.textContent = "取得失敗";
+    el.status.textContent = "取得処理で例外";
     await addMeasurement({ ts, ip: null, source: "error" });
   } finally {
     await refreshView();
@@ -220,6 +213,6 @@ function stopPolling() {
     await clearMeasurements();
     await refreshView();
   });
-
+  
   await refreshView();
 })();
