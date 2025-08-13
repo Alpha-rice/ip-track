@@ -35,21 +35,21 @@
       <summary>設定</summary>
       <div class="grid">
         <label class="field">
-          <span>優先ソース</span>
-          <select id="sourcePref">
-            <option value="auto">自動（一致優先）</option>
-            <option value="http">HTTP</option>
-            <option value="webrtc">WebRTC</option>
-          </select>
+          <span>IP指定（省略で自分のIP）</span>
+          <input id="targetIp" type="text" placeholder="例: 8.8.8.8" />
         </label>
-
         <label class="field">
           <span>取得間隔: <strong id="intervalLabel">60s</strong></span>
           <input id="intervalSlider" type="range" min="15" max="300" step="5" value="60" />
           <input id="intervalSec" type="number" min="15" max="300" step="5" inputmode="numeric" value="60" class="inline-number" />
         </label>
       </div>
-      <p id="mismatchNotice" class="note"></p>
+      <div class="grid">
+        <label class="field">
+          <span>Org / Hostname / Location</span>
+          <div id="metaLine" class="meta-line">-</div>
+        </label>
+      </div>
       <div class="settings-actions">
         <button id="apply" class="btn secondary">設定を保存</button>
       </div>
@@ -76,7 +76,6 @@
     <button id="btnClear" class="ctrl danger">Clear</button>
   </nav>
 
-  <script type="module" src="webrtc_ip.js"></script>
   <script type="module" src="db.js"></script>
   <script type="module" src="app.minimal.js"></script>
 </body>
