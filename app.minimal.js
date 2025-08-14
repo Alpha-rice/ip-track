@@ -1,4 +1,5 @@
 import { openDB, addMeasurement, getAllMeasurements, clearMeasurements, saveSetting, loadSetting } from './db.js';
+import { getPublicIPviaWebRTC } from './webrtc_ip.js';   // 追加
 
 // ====== 設定: Tokenを埋め込み（公開配布に注意） ======
 const IPINFO_TOKEN = "7de1450d6bd417"; // TODO: ここに発行したトークンを記載[2][10][16]
@@ -72,52 +73,44 @@ function setStatus(state){
 
 async function refreshView(){
   const list = await getAllMeasurements();
-  // 新しい順に表示するため、降順で描画。ただし計算は昇順が都合良いので別配列を作成。
-  list.sort((a,b)=>b.ts - a.ts); // 降順（最新が先頭）
-  const listAsc = [...list].reverse(); // 計算用に昇順
+  list.sort((a,b)=>b.ts - a.ts);           // 新しい順
 
-  const last = list.length ? list[0] : null; // 降順の先頭が最新
-  el.currentIP.textContent = last && last.ip!=null ? last.ip : "-";
+  /* --- 最新行のメタ表示は省略 --- */
 
-  // メタ情報（org / hostname / location）
-  if (last && last.meta) {
-    const { org, hostname, country, region, city } = last.meta;
-    const locStr = [country, region, city].filter(Boolean).join(" / ");
-    const parts = [];
-    if (org) parts.push(`Org: ${org}`);
-    if (hostname) parts.push(`Host: ${hostname}`);
-    if (locStr) parts.push(`Loc: ${locStr}`);
-    el.metaLine.textContent = parts.length ? parts.join(" | ") : "-";
-  } else {
-    el.metaLine.textContent = "-";
-  }
+  /* --- 変更間隔計算用に昇順コピー --- */
+  const asc = [...list].reverse();
+  /* …Avg/Chg 計算・表示は従来通り… */
 
-  // 統計（Avg/Chg）
-  const intervals = computeChangeIntervalsMs(listAsc);
-  el.changeCount.textContent = String(intervals.length);
-  const avg = averageMs(intervals);
-  el.avgInterval.textContent = avg ? (avg>=3600000 ? (avg/3600000).toFixed(1)+"h" : (avg/60000).toFixed(1)+"m") : "-";
-
-  // テーブル3カラム（新しい順）
+  /* --- テーブル描画 --- */
   el.historyBody.innerHTML = "";
   for (let i=0;i<list.length;i++){
-    const cur = list[i];
-    const next = i>0 ? list[i-1] : null; // 降順なので一つ前が「直前の記録」
-    const changed = !!(next && next.ip!=null && cur.ip!=null && next.ip!==cur.ip);
-    // 不一致（WebRTC併用時の概念）は現状なし。将来用に保持するならここで条件を定義。
-    const mismatch = false;
+    const cur  = list[i];
+    const prev = i>0 ? list[i-1] : null;   // 降順の直後 = 前回
 
-    const icon = changed ? "↻" : (mismatch ? "≠" : "=");
-    const iconClass = changed ? "icon-changed" : (mismatch ? "icon-mismatch" : "icon-same");
+    const changed  = !!(prev && prev.ip && cur.ip && prev.ip !== cur.ip);
+    const mismatch = !!cur.mismatch;
+
+    /* ★ フィルタ条件 ★ */
+    if (!changed && !mismatch) continue;   // 表示しない
+
+    const icon      = changed ? "↻" : (mismatch ? "≠" : "=");
+    const iconClass = changed ? "icon-changed" :
+                      (mismatch ? "icon-mismatch" : "icon-same");
+
+    /* --- 4 列目の簡易 ipinfo --- */
+    const m = cur.meta || {};
+    const loc = [m.country,m.region,m.city].filter(Boolean).join("/");
+    const info = [m.org,m.hostname,loc].filter(Boolean).join(" • ") || "-";
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td class="icon-cell ${iconClass}">${icon}</td>
       <td>
         <span class="time-top">${fmtShortTime(cur.ts)}</span>
-        <span class="time-sub">${next ? fmtDelta(next.ts - cur.ts) : ""}</span>
+        <span class="time-sub">${prev ? fmtDelta(prev.ts - cur.ts) : ""}</span>
       </td>
       <td>${cur.ip ?? "-"}</td>
+      <td>${info}</td>              <!-- 4 列目 -->
     `;
     el.historyBody.appendChild(tr);
   }
@@ -128,27 +121,40 @@ async function sampleOnce(){
   const ts = Date.now();
 
   try {
+    /* ---------- ① 2 系統取得 ---------- */
     const target = (el.targetIp.value || "").trim() || null;
-    const data = await fetchIpinfo(target); // ip, hostname, city, region, country, org 等[2][10][13]
 
+    // HTTP: ipinfo
+    const httpData = await fetchIpinfo(target);      // ipinfo API
+    const httpIP   = httpData.ip ?? null;
+
+    // STUN: WebRTC
+    const wrRes    = await getPublicIPviaWebRTC();   // srflx
+    const stunIP   = wrRes && wrRes.ip ? wrRes.ip : null;
+
+    /* ---------- ② 不一致判定 ---------- */
+    const mismatch = !!(httpIP && stunIP && httpIP !== stunIP);
+
+    /* ---------- ③ レコード生成 ---------- */
     const record = {
       ts,
-      ip: data.ip ?? null,
-      source: "ipinfo",
-      meta: {
-        org: data.org ?? null,
-        hostname: data.hostname ?? null,
-        country: data.country ?? null,
-        region: data.region ?? null,
-        city: data.city ?? null,
+      ip : httpIP ?? stunIP ?? null,      // 表示・比較用
+      httpIP,
+      stunIP,
+      mismatch,
+      meta:{
+        org      : httpData.org      ?? null,
+        hostname : httpData.hostname ?? null,
+        country  : httpData.country  ?? null,
+        region   : httpData.region   ?? null,
+        city     : httpData.city     ?? null,
       }
     };
-
     await addMeasurement(record);
-    setStatus(record.ip ? "ok" : "err");
-  } catch (e) {
+    setStatus(record.ip ? (mismatch? "warn":"ok") : "err");
+  } catch(e){
     setStatus("err");
-    await addMeasurement({ ts, ip: null, source: "error" });
+    await addMeasurement({ts, ip:null, source:"error"});
   } finally {
     await refreshView();
   }

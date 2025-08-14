@@ -47,10 +47,24 @@ input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-m
 
 .table-wrap{border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
 table.mini{width:100%;border-collapse:collapse;table-layout:fixed}
-table.mini.three th,table.mini.three td{border-bottom:1px solid var(--border);padding:8px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-table.mini.three th:nth-child(1),table.mini.three td:nth-child(1){width:56px;text-align:center}
-table.mini.three th:nth-child(2),table.mini.three td:nth-child(2){width:140px}
-table.mini.three th:nth-child(3),table.mini.three td:nth-child(3){width:auto}
+/* 旧セレクタ three → four に変更し 4 列目幅を確保 */
+table.mini.four th,
+table.mini.four td{
+  border-bottom:1px solid var(--border);
+  padding:8px;
+  font-size:13px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+table.mini.four th:nth-child(1),
+table.mini.four td:nth-child(1){width:56px;text-align:center;}
+table.mini.four th:nth-child(2),
+table.mini.four td:nth-child(2){width:140px;}
+table.mini.four th:nth-child(3),
+table.mini.four td:nth-child(3){width:140px;}
+table.mini.four th:nth-child(4),
+table.mini.four td:nth-child(4){width:auto;}   /* Info 列 */
 .time-top{display:block}
 .time-sub{display:block;color:var(--muted);font-size:11px}
 
